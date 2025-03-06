@@ -35,10 +35,16 @@ class Logger():
         sys.stdout.write('\rEpoch %03d/%03d [%04d/%04d] -- ' % (self.epoch, self.n_epochs, self.batch, self.batches_epoch))
 
         for i, loss_name in enumerate(losses.keys()):
+            """ was changed from below. [0] was a way of indexing a scalar in old versions of PyTorch, now .item is used and that is deprecated.
             if loss_name not in self.losses:
-                self.losses[loss_name] = losses[loss_name].data[0]
+                self.losses[loss_name] = losses[loss_name][0]
             else:
-                self.losses[loss_name] += losses[loss_name].data[0]
+                self.losses[loss_name] += losses[loss_name][0]
+            """
+            if loss_name not in self.losses:
+                self.losses[loss_name] = losses[loss_name].item()
+            else:
+                self.losses[loss_name] += losses[loss_name].item()
 
             if (i+1) == len(losses.keys()):
                 sys.stdout.write('%s: %.4f -- ' % (loss_name, self.losses[loss_name]/self.batch))
