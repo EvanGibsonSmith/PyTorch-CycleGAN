@@ -15,7 +15,7 @@ from utils import ReplayBuffer
 from utils import LambdaLR
 from utils import Logger
 from utils import weights_init_normal
-from datasets import ImageDataset
+from datasets import ImageDataset, SpectrogramDataset
 
 if __name__=="__main__": # Need to add this line on windows for multithreading
     parser = argparse.ArgumentParser()
@@ -25,13 +25,13 @@ if __name__=="__main__": # Need to add this line on windows for multithreading
     parser.add_argument('--dataroot', type=str, default='datasets/horse2zebra/', help='root directory of the dataset')
     parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate')
     parser.add_argument('--decay_epoch', type=int, default=100, help='epoch to start linearly decaying the learning rate to 0')
-    parser.add_argument('--size', type=int, default=256, help='size of the data crop (squared assumed)')
+    parser.add_argument('--height', type=int, default=256, help='length of the data crop (squared assumed)')
+    parser.add_argument('--width', type=int, default=256, help='wkdth of the data crop (squared assumed)')
     parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
     parser.add_argument('--output_nc', type=int, default=3, help='number of channels of output data')
     parser.add_argument('--cuda', action='store_true', help='use GPU computation')
     parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
     opt = parser.parse_args()
-    print(opt)
 
     if torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
@@ -71,8 +71,8 @@ if __name__=="__main__": # Need to add this line on windows for multithreading
 
     # Inputs & targets memory allocation
     Tensor = torch.cuda.FloatTensor if opt.cuda else torch.Tensor
-    input_A = Tensor(opt.batchSize, opt.input_nc, opt.size, opt.size)
-    input_B = Tensor(opt.batchSize, opt.output_nc, opt.size, opt.size)
+    input_A = Tensor(opt.batchSize, opt.input_nc, opt.width, opt.height)
+    input_B = Tensor(opt.batchSize, opt.output_nc, opt.width, opt.height)
     target_real = Variable(Tensor(opt.batchSize).fill_(1.0), requires_grad=False)
     target_fake = Variable(Tensor(opt.batchSize).fill_(0.0), requires_grad=False)
 
@@ -80,12 +80,16 @@ if __name__=="__main__": # Need to add this line on windows for multithreading
     fake_B_buffer = ReplayBuffer()
 
     # Dataset loader
-    transforms_ = [ transforms.Resize(int(opt.size*1.12), Image.BICUBIC), 
-                    transforms.RandomCrop(opt.size), 
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]
-    dataloader = DataLoader(ImageDataset(opt.dataroot, transforms_=transforms_, unaligned=True), 
+    #transforms_ = [ transforms.Resize(int(opt.size*1.12), Image.BICUBIC), 
+    #                transforms.RandomCrop(opt.size), 
+    #                transforms.RandomHorizontalFlip(),
+    #                transforms.ToTensor(),
+    #                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]
+    #dataloader = DataLoader(ImageDataset(opt.dataroot, transforms_=transforms_, unaligned=True), 
+    #                        batch_size=opt.batchSize, shuffle=True, num_workers=opt.n_cpu)
+
+    # No transforms for mel spectograms (flippinge etc. destroys data)
+    dataloader = DataLoader(SpectrogramDataset(opt.dataroot, unaligned=True), 
                             batch_size=opt.batchSize, shuffle=True, num_workers=opt.n_cpu)
 
     # Loss plot
@@ -95,6 +99,7 @@ if __name__=="__main__": # Need to add this line on windows for multithreading
     ###### Training ######
     for epoch in range(opt.epoch, opt.n_epochs):
         for i, batch in enumerate(dataloader):
+
             # Set model input
             real_A = Variable(input_A.copy_(batch['A']))
             real_B = Variable(input_B.copy_(batch['B']))

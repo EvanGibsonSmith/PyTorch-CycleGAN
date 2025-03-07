@@ -5,6 +5,7 @@ import os
 from torch.utils.data import Dataset
 from PIL import Image
 import torchvision.transforms as transforms
+import torch
 
 class ImageDataset(Dataset):
     def __init__(self, root, transforms_=None, unaligned=False, mode='train'):
@@ -23,6 +24,38 @@ class ImageDataset(Dataset):
             item_B = self.transform(Image.open(self.files_B[random.randint(0, len(self.files_B) - 1)]).convert('RGB'))
         else:
             item_B = self.transform(Image.open(self.files_B[index % len(self.files_B)]).convert('RGB'))
+
+        return {'A': item_A, 'B': item_B}
+    
+    def __len__(self):
+        return max(len(self.files_A), len(self.files_B))
+
+class SpectrogramDataset(Dataset):
+    def __init__(self, root, transforms_=None, unaligned=True, mode='train'):
+        if transforms_!=None:
+            self.transform = transforms.Compose(transforms_)
+        else:
+            self.transform = None
+
+        self.unaligned = unaligned
+
+        self.files_A = sorted(glob.glob(os.path.join(root, '%s/A' % mode) + '/*.*'))
+        self.files_B = sorted(glob.glob(os.path.join(root, '%s/B' % mode) + '/*.*'))
+
+    def __getitem__(self, index):
+        # Load mel spectrogram tensors from .pt files
+        item_A = torch.load(self.files_A[index % len(self.files_A)]) 
+
+        if self.unaligned: # If no correspondence between spectrograms (which we don't have typically)
+            # If unaligned, pick a random sample from B
+            item_B = torch.load(self.files_B[random.randint(0, len(self.files_B) - 1)])
+        else:
+            item_B = torch.load(self.files_B[index % len(self.files_B)])  
+
+        # Apply transformations if provided
+        if self.transform!=None:
+            item_A = self.transform(item_A)
+            item_B = self.transform(item_B)
 
         return {'A': item_A, 'B': item_B}
     
