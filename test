@@ -19,9 +19,11 @@ if __name__=="__main__":
     parser.add_argument('--dataroot', type=str, default='datasets/horse2zebra/', help='root directory of the dataset')
     parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
     parser.add_argument('--output_nc', type=int, default=3, help='number of channels of output data')
-    parser.add_argument('--size', type=int, default=256, help='size of the data (squared assumed)')
+    parser.add_argument('--height', type=int, default=256, help='height of data')
+    parser.add_argument('--width', type=int, default=256, help='width of data')
     parser.add_argument('--cuda', action='store_true', help='use GPU computation')
     parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
+    parser.add_argument('--output_dir', type=str, default="output", help='output directoy')
     parser.add_argument('--generator_A2B', type=str, default='output/netG_A2B.pth', help='A2B generator checkpoint file')
     parser.add_argument('--generator_B2A', type=str, default='output/netG_B2A.pth', help='B2A generator checkpoint file')
     opt = parser.parse_args()
@@ -49,8 +51,8 @@ if __name__=="__main__":
 
     # Inputs & targets memory allocation
     Tensor = torch.cuda.FloatTensor if opt.cuda else torch.Tensor
-    input_A = Tensor(opt.batchSize, opt.input_nc, opt.size, opt.size)
-    input_B = Tensor(opt.batchSize, opt.output_nc, opt.size, opt.size)
+    input_A = Tensor(opt.batchSize, opt.input_nc, opt.width, opt.height)
+    input_B = Tensor(opt.batchSize, opt.output_nc, opt.width, opt.height)
 
     # Dataset loader
     #transforms_ = [ transforms.ToTensor(),
@@ -65,10 +67,9 @@ if __name__=="__main__":
     ###### Testing######
 
     # Create output dirs if they don't exist
-    if not os.path.exists('output/A'):
-        os.makedirs('output/A')
-    if not os.path.exists('output/B'):
-        os.makedirs('output/B')
+    for out_dir in ["realA", "realB", "fakeA", "fakeB"]:
+        if not os.path.exists(f'{opt.output_dir}/{out_dir}'):
+            os.makedirs(f'{opt.output_dir}/{out_dir}')
 
     for i, batch in enumerate(dataloader):
         # Set model input
@@ -80,8 +81,11 @@ if __name__=="__main__":
         fake_A = 0.5*(netG_B2A(real_B).data + 1.0)
 
         # Save image files
-        save_image(fake_A, 'output/A/%04d.png' % (i+1))
-        save_image(fake_B, 'output/B/%04d.png' % (i+1))
+        torch.save(real_A, f'{opt.output_dir}/realA/%04d.pt' % (i+1))
+        torch.save(real_B, f'{opt.output_dir}/realB/%04d.pt' % (i+1))
+
+        torch.save(fake_A, f'{opt.output_dir}/fakeA/%04d.pt' % (i+1))
+        torch.save(fake_B, f'{opt.output_dir}/fakeB/%04d.pt' % (i+1))
 
         sys.stdout.write('\rGenerated images %04d of %04d' % (i+1, len(dataloader)))
 
