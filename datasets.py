@@ -93,7 +93,7 @@ class TimeSeriesDataset(Dataset):
             item_B = self.transform(item_B)
 
         # TODO make the dataset not hardcoded as small, alsto splitting up clips might help
-        return {'A': item_A, 'B': item_B}
+        return {'A': item_A.T, 'B': item_B.T}
     
     def __len__(self):
         return max(len(self.files_A), len(self.files_B))
