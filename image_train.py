@@ -9,8 +9,8 @@ from torch.autograd import Variable
 from PIL import Image
 import torch
 
-from models import Generator
-from models import Discriminator
+from image_models import Generator
+from image_models import Discriminator
 from utils import ReplayBuffer
 from utils import LambdaLR
 from utils import Logger

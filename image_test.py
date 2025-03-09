@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch
 
-from models import Generator
+from image_models import Generator
 from datasets import ImageDataset, SpectrogramDataset
 
 if __name__=="__main__":

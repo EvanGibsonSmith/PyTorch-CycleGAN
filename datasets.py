@@ -62,3 +62,39 @@ class SpectrogramDataset(Dataset):
     
     def __len__(self):
         return max(len(self.files_A), len(self.files_B))
+    
+# TODO make the preprocessing handle the squeezing and transposing done here
+class TimeSeriesDataset(Dataset):
+    def __init__(self, root, transforms_=None, unaligned=True, mode='train'):
+        if transforms_!=None:
+            self.transform = transforms.Compose(transforms_)
+        else:
+            self.transform = None
+
+        self.unaligned = unaligned
+
+        self.files_A = sorted(glob.glob(os.path.join(root, '%s/A' % mode) + '/*.*'))
+        self.files_B = sorted(glob.glob(os.path.join(root, '%s/B' % mode) + '/*.*'))
+
+    def __getitem__(self, index):
+        # NOTE: weights_only argument not relevant for loading mel specs, but supresses annoying warning in terminal 
+        # Load mel spectrogram tensors from .pt files
+        item_A = torch.load(self.files_A[index % len(self.files_A)], weights_only=False) 
+
+        if self.unaligned: # If no correspondence between spectrograms (which we don't have typically)
+            # If unaligned, pick a random sample from B
+            item_B = torch.load(self.files_B[random.randint(0, len(self.files_B) - 1)], weights_only=False)
+        else:
+            item_B = torch.load(self.files_B[index % len(self.files_B)], weights_only=False)  
+
+        # Apply transformations if provided
+        if self.transform!=None:
+            item_A = self.transform(item_A)
+            item_B = self.transform(item_B)
+
+        # TODO make the dataset not hardcoded as small, alsto splitting up clips might help
+        return {'A': item_A, 'B': item_B}
+    
+    def __len__(self):
+        return max(len(self.files_A), len(self.files_B))
+    
